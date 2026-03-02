@@ -2,66 +2,62 @@
 
 
 //Thermocouple Declaration
-int thermoDO = 12;
+int thermoSO = 12;
 int thermoCLK = 13;
 
-int thermoCS_low = 2;
-// int thermoCS_mid = 3;
-// int thermoCS_up = 4;
+int thermoCS_upper = 2;
+int thermoCS_mid = 4;
+int thermoCS_low = 7;
 
-MAX6675 thermocouple_low(thermoCLK, thermoCS_low, thermoDO);
-// MAX6675 thermocouple_low(thermoCLK, thermoCS_mid, thermoDO);
-// MAX6675 thermocouple_low(thermoCLK, thermoCS_up, thermoDO);
+MAX6675 thermocouple_low(thermoCLK, thermoCS_upper, thermoSO);
+MAX6675 thermocouple_low(thermoCLK, thermoCS_mid, thermoSO);
+MAX6675 thermocouple_low(thermoCLK, thermoCS_low, thermoSO);
 
+float temp_upper;
+float temp_mid;
 float temp_low;
-// float temp_mid;
-// float temp_up;
 
-//MOSFET Declaration
-int gate_low = 5;
-
-//Relay
-int mosfet_trig = 7;
-
+int load_upper = 3;
+int load_mid = 5;
+int load_low = 6;
 
 //PID Setup
 float minTemp = 72; //Room temperature
 float target = 95; //Degrees Fahrenheit 
-float error_low;
-float error_mid;
-float error_up;
 
+float error_upper;
+float error_mid;
+float error_low;
+
+float output_upper;
+float output_mid;
 float output_low;
 
 //constants
 float k_p = 255/(target-minTemp); 
-float k_i;
-float k_d;
+// float k_i;
+// float k_d;
 
 
 void setup() {
   Serial.begin(9600);
-  delay(500);
+  delay(500);   // wait for MAX chip to stabilize
 
-  Serial.println("MAX6675 test");
-  // wait for MAX chip to stabilize
-  delay(500);
   
-
-  pinMode(mosfet_trig, OUTPUT);
-  pinMode(gate_low, OUTPUT);
+  pinMode(load_upper, OUTPUT);
+  pinMode(load_mid, OUTPUT);
+  pinMode(load_low, OUTPUT);
 }
 
 void loop() {
-    digitalWrite(mosfet_trig, HIGH); //temporary output
-    // analogWrite(gate_low, 0);
-    digitalWrite(gate_low, LOW);
+    analogWrite(load_upper, 50); 
+    analogWrite(load_mid, 50); 
+    analogWrite(load_low, 50); 
+
 
   //Testing 
   Serial.print("F = ");
   Serial.println(thermocouple_low.readFahrenheit());
-  //  Serial.print("Error = ");
-  // Serial.println(error_low);
   Serial.print("Current output = ");
   Serial.println(output_low);
   
@@ -80,15 +76,40 @@ void loop() {
     output_low = 0;
   }
 
-  
-  analogWrite(gate_low, output_low);
 
 
 
 //MIDDLE REGION
+  temp_mid = thermocouple_mid.readFahrenheit();
+  error_mid = (target-temp_mid); //Calculate temperature difference
+  
+
+  if(error_mid > (target - minTemp)) { //If the temperature is lower than minTemp, output the maximum power
+    output_mid = 255;
+  }
+  else if(error_mid >= 0) {
+    output_mid = error_mid*k_p ; //Translate temperature error to output voltage
+  }
+  else {
+    output_mid = 0;
+  }
+
+
 
 //UPPER REGION
+  temp_upper = thermocouple_mid.readFahrenheit();
+  error_upper = (target-temp_upper); //Calculate temperature difference
+  
 
+  if(error_upper > (target - minTemp)) { //If the temperature is lower than minTemp, output the maximum power
+    output_upper = 255;
+  }
+  else if(error_upper >= 0) {
+    output_upper = error_upper*k_p ; //Translate temperature error to output voltage
+  }
+  else {
+    output_upper = 0;
+  }
 
 
   delay(250); //For the MAX6675 to update, delay AT LEAST 250ms between reads
